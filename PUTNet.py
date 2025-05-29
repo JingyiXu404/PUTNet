@@ -116,9 +116,7 @@ class Update_av(nn.Module):
         super(Update_av, self).__init__()
 
     def forward(self, z, x, v, lam):
-        out_a = z - x + v
-        out_a = torch.mul(torch.sign(out_a), F.relu(torch.abs(out_a) - lam))
-        out_v = v + z - x - out_a
+        #release after accept
         return out_a, out_v
 
 
@@ -169,16 +167,7 @@ class Update_m(nn.Module):
         self.apply(kaiming_init)
 
     def forward(self, x, gamma):
-        gamma = reshape_params4(gamma, x)
-        x1 = self.encode(torch.cat([x, gamma], dim=1))
-        x2 = self.m_down1(x1)
-        x3 = self.m_down2(x2)
-        x4 = self.m_down3(x3)
-        x = self.m_body(x4)
-        x = self.m_up3(x + x4)
-        x = self.m_up2(x + x3)
-        x = self.m_up1(x + x2)
-        x = self.m_tail(x + x1)
+        #release after accept
         return x
 
 
@@ -375,59 +364,29 @@ class Block(nn.Module):
 class ReparamLargeKernelConv(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride, groups, mid_kernel, small_kernel):
         super(ReparamLargeKernelConv, self).__init__()
-        self.kernel_size = kernel_size
-        self.small_kernel = small_kernel
-        padding = kernel_size // 2
-        self.lkb_origin = nn.Sequential(nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=padding, stride=stride, bias=False, groups=groups), nn.BatchNorm2d(out_channels))
-        self.small_conv = nn.Sequential(nn.Conv2d(in_channels, out_channels, kernel_size=mid_kernel, padding=mid_kernel//2, stride=stride, bias=False, groups=groups), nn.BatchNorm2d(out_channels))
-        self.tiny_conv = nn.Sequential(nn.Conv2d(in_channels, out_channels, kernel_size=small_kernel, padding=small_kernel//2, stride=stride, bias=False, groups=groups), nn.BatchNorm2d(out_channels))
+        #release after accept
     def forward(self, inputs):
-        out = self.lkb_origin(inputs)
-        out += self.small_conv(inputs)
-        out += self.tiny_conv(inputs)
+        #release after accept
         return out
 class RepLKBlock(nn.Module):
     def __init__(self, in_channels, out_channels, block_lk_size, mid_kernel, small_kernel, drop_path):
         super().__init__()
-        self.pw1 = nn.Sequential(nn.Conv2d(in_channels, out_channels, kernel_size=1, padding=0, stride=1, bias=False, groups=1), nn.BatchNorm2d(out_channels), nn.ReLU(inplace=True))
-        self.pw2 = nn.Sequential(nn.Conv2d(out_channels, in_channels, kernel_size=1, padding=0, stride=1, bias=False, groups=1), nn.BatchNorm2d(in_channels))
-        self.large_kernel = ReparamLargeKernelConv(in_channels=out_channels, out_channels=out_channels, kernel_size=block_lk_size, stride=1, groups=out_channels, mid_kernel=mid_kernel, small_kernel=small_kernel)
-        self.lk_nonlinear = nn.ReLU()
-        self.prelkb_bn = nn.BatchNorm2d(in_channels)
-        self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
+        #release after accept
     def forward(self, x):
-        out = self.prelkb_bn(x)
-        out = self.pw1(out)
-        out = self.large_kernel(out)
-        out = self.lk_nonlinear(out)
-        out = self.pw2(out)
-        return out + self.drop_path(out)
+        #release after accept
 class RepLKBlocks(nn.Module):
     def __init__(self, out_channels, block_lk_size=[31,31], mid_kernel=5, small_kernel=3, drop_path=0.0):
         super().__init__()
-        self.num_blocks = len(block_lk_size)
-        self.lk_blocks: nn.ModuleList = nn.ModuleList()
-        for i in range(self.num_blocks):
-            self.lk_blocks.append(RepLKBlock(out_channels, out_channels, block_lk_size[i], mid_kernel, small_kernel, drop_path))
+        #release after accept
     def forward(self, x):
-        for i in range(self.num_blocks):
-            x = self.lk_blocks[i](x)
+        #release after accept
         return x
 class RepLKBlocks2(nn.Module):
     def __init__(self, in_channels, out_channels, block_lk_size=[31,31], mid_kernel=5, small_kernel=3, drop_path=0.0):
         super().__init__()
-        self.num_blocks = len(block_lk_size)
-        self.lk_blocks: nn.ModuleList = nn.ModuleList()
-        self.in_fuse = conv3x3_bn_relu(in_channels, out_channels, k=3, s=1, p=1, b=False)
-        for i in range(self.num_blocks):
-            self.lk_blocks.append(RepLKBlock(out_channels, out_channels, block_lk_size[i], mid_kernel, small_kernel, drop_path))
-        # self.out_fuse = conv3x3_bn_relu(out_channels, out_channels, k=3, s=1, p=1, b=False)
-        self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
+        #release after accept
     def forward(self, x):
-        x = self.in_fuse(x)
-        for i in range(self.num_blocks):
-            x = self.lk_blocks[i](x)
-        return x
+        #release after accept
 class CPNet(nn.Module):
     def __init__(self):
         super(CPNet, self).__init__()
@@ -610,54 +569,22 @@ class Stage_p(nn.Module):
     # for phase consistency, input is out_xp, out_yp
     def __init__(self, in_nc=1, nc_x=[64, 128, 256, 512], nb=4, is_last=False):
         super(Stage_p, self).__init__()
-        self.is_last = is_last
-        if self.is_last:
-            pass
-        else:
-            self.up_cp = Update_m(in_nc=in_nc, nc_x=nc_x, nb=nb)
-            self.up_avx = Update_av()
-            self.up_avy = Update_av()
-
+        #release after accept
         self.apply(kaiming_init)
 
     def forward(self, x, y, ax, ay, cp, vx, vy, vp, u1, u2, lambda1=0, lambda2=0, beta1=0, beta2=0, beta3=0, gamma1=0):
-        # x + ux
-        x = x + u1 * torch.ones_like(x)
-        y = y + u2 * torch.ones_like(y)
-        # update zp
-        zp = (1 / (beta1 + beta2 + beta3 + 1e-8)) * (beta1 * (x + ax - vx) + beta2 * (y + ay - vy) + beta3 * (cp - vp))
-        if self.is_last:
-            return zp
-        else:
-            # update a and v input: z,x,v,lam
-            ax, vx = self.up_avx(zp, x, vx, lam=lambda1 / (beta1 + 1e-8))
-            ay, vy = self.up_avy(zp, y, vy, lam=lambda2 / (beta2 + 1e-8))
-            # update cp and vp input: x, gamma
-            cp = self.up_cp(zp + vp, beta3 / (gamma1 + 1e-8))
-            vp = vp + zp - cp
-            return zp, ax, ay, cp, vx, vy, vp
+        #release after accept
+        return zp, ax, ay, cp, vx, vy, vp
 
 
 class Stage_z(nn.Module):
     def __init__(self, in_nc=1, nc_x=[64, 128, 256, 512], nb=4):
         super(Stage_z, self).__init__()
-        self.up_zx = Update_m(in_nc=in_nc, nc_x=nc_x, nb=nb)
-        self.up_zy = Update_m(in_nc=in_nc, nc_x=nc_x, nb=nb)
-        self.up_m = Update_m(in_nc=in_nc, nc_x=nc_x, nb=nb)
+        #release after accept
         self.apply(kaiming_init)
 
     def forward(self, x, y, z, ux, uy, um, deta1=0, deta2=0, epsilon1=0, epsilon2=0, epsilon3=0, gamma3=0):
-        # update zx, ux
-        zx = self.up_zx(z - x + ux, epsilon1 / (deta1 + 1e-8))
-        ux = ux + z - x - zx
-        # update zy, uy
-        zy = self.up_zy(z - y + uy, epsilon2 / (deta2 + 1e-8))
-        uy = uy + z - y - zy
-        # update m, um
-        m = self.up_m(z + um, epsilon3 / (gamma3 + 1e-8))
-        um = um + z - m
-        # update z
-        z = (1 / (epsilon1 + epsilon2 + epsilon3 + 1e-8)) * (epsilon1 * (x + zx - ux) + epsilon2 * (y + zy - uy) + epsilon3 * (m - um))
+        #release after accept
         return z, zx, ux, zy, uy, m, um
 
 
